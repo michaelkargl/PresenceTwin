@@ -1,34 +1,26 @@
-﻿namespace PresenceTwin.Api.Controllers
+﻿module PresenceTwin.Api.Controllers
 
 open System
-open System.Collections.Generic
-open System.Linq
 open System.Threading.Tasks
-open Microsoft.AspNetCore.Mvc
-open Microsoft.Extensions.Logging
+open Microsoft.AspNetCore.Http
+open Oxpecker
 open PresenceTwin.Api
 
-[<ApiController>]
-[<Route("[controller]")>]
-type WeatherForecastController(logger: ILogger<WeatherForecastController>) =
-    inherit ControllerBase()
+let getWeatherData (ctx: HttpContext): Task =
+    task {
+        // Simulate asynchronous loading to demonstrate long rendering
+        do! Task.Delay(1)
 
-    let summaries =
-        [| "Freezing"
-           "Bracing"
-           "Chilly"
-           "Cool"
-           "Mild"
-           "Warm"
-           "Balmy"
-           "Hot"
-           "Sweltering"
-           "Scorching" |]
-
-    [<HttpGet>]
-    member _.Get() =
-        let rng = System.Random()
-        [| for index in 0..4 ->
-               { Date = DateTime.Now.AddDays(float index)
-                 TemperatureC = rng.Next(-20, 55)
-                 Summary = summaries.[rng.Next(summaries.Length)] } |]
+        let startDate = DateTime.Now
+        let summaries = [ "Freezing"; "Bracing"; "Chilly"; "Cool"; "Mild"; "Warm"; "Balmy"; "Hot"; "Sweltering"; "Scorching" ]
+        let forecasts =
+            [|
+                for index in 1..5 do
+                    {
+                        Date = startDate.AddDays(index)
+                        TemperatureC = Random.Shared.Next(-20, 55)
+                        Summary = summaries[Random.Shared.Next(summaries.Length)]
+                    }
+            |]
+        return! forecasts |> ctx.WriteJson
+    } :> Task

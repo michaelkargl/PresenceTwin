@@ -18,4 +18,8 @@
       <Content Include="Dockerfile" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Oxpecker.OpenApi" Version="1.0.0" />
+    </ItemGroup>
+
 </Project>
