@@ -19,7 +19,9 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10" />
       <PackageReference Include="Oxpecker.OpenApi" Version="1.0.0" />
+      <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
     </ItemGroup>
 
 </Project>

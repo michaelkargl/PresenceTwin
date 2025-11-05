@@ -2,44 +2,75 @@ namespace PresenceTwin.Api
 
 #nowarn "20"
 
-open System
 open System.Collections.Generic
-open System.IO
-open System.Linq
-open System.Threading.Tasks
-open Microsoft.AspNetCore
 open Microsoft.AspNetCore.Builder
-open Microsoft.AspNetCore.Hosting
-open Microsoft.AspNetCore.HttpsPolicy
-open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
-open Microsoft.Extensions.Logging
+open Microsoft.OpenApi.Models
 open Oxpecker
+open Oxpecker.OpenApi
 
-type ExitCode =
+type ExitCode = 
     | Success = 0
     | GeneralError = 1
 
+type TestHttpError = { Code: string; Message: string }
+
 module Program =
-    let exitCode = 0
-    
-    let private endpoints = [
-        GET [
-            route "/weatherforecast" <| Controllers.getWeatherData
-        ]
-    ]
+    let private endpoints =
+        [ GET
+              [ routef "/weatherforecast/{%i:int}" Controllers.getWeatherData
+                |> addOpenApi (
+                    OpenApiConfig(
+                        responseBodies =
+                            [| ResponseBody(typeof<string>)
+                               ResponseBody(typeof<TestHttpError>, statusCode = 500) |],
+                        configureOperation =
+                            (fun o ->
+                                o.Summary <- "Get weather forecast"
+                                o.Description <- "Retrieve a list of weather forecasts"
+
+                                o.Parameters <-
+                                    List<OpenApiParameter>(
+                                        [ OpenApiParameter(
+                                              Name = "count",
+                                              In = ParameterLocation.Path,
+                                              Required = true,
+                                              Deprecated = true,
+                                              Description = "The number of forecasts",
+                                              Schema = OpenApiSchema(Type = "integer", Format = "int32")
+                                          ) ]
+                                    )
+
+                                o)
+                    )
+                ) ] ]
 
     let private configureApp (app: WebApplication) : unit =
         if app.Environment.IsDevelopment() then
             app.UseDeveloperExceptionPage() |> ignore
         else
             app.UseExceptionHandler("/error") |> ignore
-        
-        app.UseStaticFiles().UseAntiforgery().UseRouting().UseOxpecker(endpoints) |> ignore
-    
+
+        app.UseStaticFiles()
+        |> _.UseAntiforgery()
+        |> _.UseRouting()
+        |> _.UseOxpecker(endpoints)
+        |> _.UseSwagger()
+        |> _.UseSwaggerUI()
+        |> ignore
+
+        app.MapOpenApi() |> ignore
+
     let private configureServices (services: IServiceCollection) : unit =
-        services.AddRouting().AddAntiforgery().AddOxpecker() |> ignore
+        services
+            .AddRouting()
+            .AddAntiforgery()
+            .AddOxpecker()
+            .AddOpenApi()
+            .AddEndpointsApiExplorer()
+            .AddSwaggerGen()
+        |> ignore
 
     [<EntryPoint>]
     let main args =
@@ -49,7 +80,7 @@ module Program =
 
         let app = builder.Build()
         configureApp app
-        
+
         app.Run()
 
         ExitCode.Success |> int

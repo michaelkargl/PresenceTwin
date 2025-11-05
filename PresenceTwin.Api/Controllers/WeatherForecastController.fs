@@ -6,7 +6,7 @@ open Microsoft.AspNetCore.Http
 open Oxpecker
 open PresenceTwin.Api
 
-let getWeatherData (ctx: HttpContext): Task =
+let getWeatherData (count: int) (ctx: HttpContext): Task =
     task {
         // Simulate asynchronous loading to demonstrate long rendering
         do! Task.Delay(1)
@@ -15,7 +15,7 @@ let getWeatherData (ctx: HttpContext): Task =
         let summaries = [ "Freezing"; "Bracing"; "Chilly"; "Cool"; "Mild"; "Warm"; "Balmy"; "Hot"; "Sweltering"; "Scorching" ]
         let forecasts =
             [|
-                for index in 1..5 do
+                for index in 1..count do
                     {
                         Date = startDate.AddDays(index)
                         TemperatureC = Random.Shared.Next(-20, 55)
