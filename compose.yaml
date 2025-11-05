@@ -1,0 +1,7 @@
+﻿services:
+  presencetwin.api:
+    image: presencetwin.api
+    build:
+      context: .
+      dockerfile: PresenceTwin.Api/Dockerfile
+
