@@ -2,66 +2,21 @@ namespace PresenceTwin.Api
 
 #nowarn "20"
 
-open System.Collections.Generic
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
-open Microsoft.OpenApi.Models
 open Oxpecker
 open Oxpecker.OpenApi
+open PresenceTwin.Api.Infrastructure
+open PresenceTwin.Api.Features.Weather
 
-type ExitCode = 
+type ExitCode =
     | Success = 0
     | GeneralError = 1
 
-type TestHttpError = { Code: string; Message: string }
-
 module Program =
-    let private endpoints =
-        [ GET
-              [ routef "/weatherforecast/{%i:int}" Controllers.getWeatherData
-                |> addOpenApi (
-                    OpenApiConfig(
-                        responseBodies =
-                            [| ResponseBody(typeof<string>)
-                               ResponseBody(typeof<TestHttpError>, statusCode = 500) |],
-                        configureOperation =
-                            (fun o ->
-                                o.Summary <- "Get weather forecast"
-                                o.Description <- "Retrieve a list of weather forecasts"
 
-                                o.Parameters <-
-                                    List<OpenApiParameter>(
-                                        [ OpenApiParameter(
-                                              Name = "count",
-                                              In = ParameterLocation.Path,
-                                              Required = true,
-                                              Deprecated = true,
-                                              Description = "The number of forecasts",
-                                              Schema = OpenApiSchema(Type = "integer", Format = "int32")
-                                          ) ]
-                                    )
-
-                                o)
-                    )
-                ) ] ]
-
-    let private configureApp (app: WebApplication) : unit =
-        if app.Environment.IsDevelopment() then
-            app.UseDeveloperExceptionPage() |> ignore
-        else
-            app.UseExceptionHandler("/error") |> ignore
-
-        app.UseStaticFiles()
-        |> _.UseAntiforgery()
-        |> _.UseRouting()
-        |> _.UseOxpecker(endpoints)
-        |> _.UseSwagger()
-        |> _.UseSwaggerUI()
-        |> ignore
-
-        app.MapOpenApi() |> ignore
-
+    /// Configure application services (DI container)
     let private configureServices (services: IServiceCollection) : unit =
         services
             .AddRouting()
@@ -72,15 +27,39 @@ module Program =
             .AddSwaggerGen()
         |> ignore
 
+    /// Configure application middleware pipeline
+    let private configureApp (config: Configuration.WeatherConfig) (app: WebApplication) : unit =
+        // Configure middleware
+        if app.Environment.IsDevelopment() then
+            app.UseDeveloperExceptionPage() |> ignore
+        else
+            app.UseExceptionHandler("/error") |> ignore
+
+        // Get all endpoints from features
+        app.UseStaticFiles()
+        |> _.UseAntiforgery()
+        |> _.UseRouting()
+        |> _.UseOxpecker([ yield! Endpoints.endpoints config ])
+        |> _.UseSwagger()
+        |> _.UseSwaggerUI()
+        |> ignore
+
+        app.MapOpenApi() |> ignore
+
     [<EntryPoint>]
     let main args =
-
         let builder = WebApplication.CreateBuilder(args)
+
+        // Load configuration
+        let weatherConfig = Configuration.loadWeatherConfig builder.Configuration
+
+        // Configure services
         configureServices builder.Services
 
         let app = builder.Build()
-        configureApp app
+
+        // Configure app with dependencies
+        configureApp weatherConfig app
 
         app.Run()
-
         ExitCode.Success |> int

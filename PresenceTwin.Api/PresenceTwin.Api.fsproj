@@ -6,9 +6,28 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="WeatherForecast.fs"/>
-        <Compile Include="Controllers/WeatherForecastController.fs"/>
-        <Compile Include="Program.fs"/>
+        <!-- Common layer (no dependencies) -->
+        <Compile Include="Common/Result.fs" />
+        <Compile Include="Common/Validation.fs" />
+        <Compile Include="Common/Http.fs" />
+        
+        <!-- Infrastructure layer (depends on Common) -->
+        <Compile Include="Infrastructure/Configuration.fs" />
+        <Compile Include="Infrastructure/Dependencies.fs" />
+        
+        <!-- Features - Weather (depends on Common and Infrastructure) -->
+        <Compile Include="Features/Weather/Domain.fs" />
+        <Compile Include="Features/Weather/GetForecast.fs" />
+        <Compile Include="Features/Weather/GenerateForecasts.fs" />
+        <Compile Include="Features/Weather/Endpoints.fs" />
+        
+        <!-- Entry point (depends on everything) -->
+        <Compile Include="Program.fs" />
+        
+        <!-- Legacy files (can be removed after verification) -->
+        <!-- <Compile Include="Errors.fs" /> -->
+        <!-- <Compile Include="WeatherForecast.fs"/> -->
+        <!-- <Compile Include="Controllers/WeatherForecastController.fs"/> -->
     </ItemGroup>
 
     <ItemGroup>
