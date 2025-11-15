@@ -1,4 +1,4 @@
-namespace PresenceTwin.Api.Features.Weather
+namespace PresenceTwin.Api.Features.Weather.GenerateForecasts
 
 open System
 open System.Threading.Tasks
@@ -6,41 +6,55 @@ open Microsoft.AspNetCore.Http
 open Oxpecker
 open Oxpecker.OpenApi
 open Microsoft.OpenApi.Models
-open PresenceTwin.Api.Common
-open PresenceTwin.Api.Infrastructure
+open PresenceTwin.Api.Common.Http
+open PresenceTwin.Api.Common.Result
+open PresenceTwin.Api.Infrastructure.Configuration
+open PresenceTwin.Api.Features.Weather.Domain
+
+// ==================== COMMAND MODEL ====================
+
+/// Command input
+type Command = {
+    Count: int
+    StartDate: DateTime option
+}
+
+/// Command result
+type CommandResult = {
+    Forecasts: WeatherForecast array
+    GeneratedAt: DateTime
+    Count: int
+}
+
+/// Command errors
+type CommandError =
+    | InvalidCount of int * string
+    | InvalidStartDate of string
+    | GenerationFailed of string
+
+// ==================== DEPENDENCIES ====================
+
+/// Type aliases for dependency functions
+type GetCurrentTime = unit -> DateTime
+type GetRandomInt = int -> int -> int
+
+/// Dependencies needed by this command
+type Dependencies = {
+    Config: WeatherConfig
+    GetCurrentTime: GetCurrentTime
+    GetRandomInt: GetRandomInt
+}
+
+/// HTTP request body
+type GenerateForecastsRequest = {
+    Count: int
+    StartDate: DateTime option
+}
+
+// ==================== MODULE ====================
 
 module GenerateForecasts =
-    
-    // ==================== COMMAND MODEL ====================
-    
-    /// Command input
-    type Command = {
-        Count: int
-        StartDate: DateTime option
-    }
-    
-    /// Command result
-    type CommandResult = {
-        Forecasts: Domain.WeatherForecast array
-        GeneratedAt: DateTime
-        Count: int
-    }
-    
-    /// Command errors
-    type CommandError =
-        | InvalidCount of int * string
-        | InvalidStartDate of string
-        | GenerationFailed of string
-    
-    // ==================== DEPENDENCIES ====================
-    
-    /// Dependencies needed by this command
-    type Dependencies = {
-        Config: Configuration.WeatherConfig
-        TimeProvider: Dependencies.ITimeProvider
-        RandomProvider: Dependencies.IRandomProvider
-    }
-    
+
     // ==================== VALIDATION (Pure) ====================
     
     /// Validate count
@@ -62,12 +76,10 @@ module GenerateForecasts =
         | _ -> Ok startDate
     
     /// Validate the entire command
-    let private validate (config: Configuration.WeatherConfig) (command: Command) : Result<Command, CommandError> =
-        Result.validation {
-            let! _ = validateCount config.MaxForecastDays command.Count
-            let! _ = validateStartDate command.StartDate
-            return command
-        }
+    let private validate (config: WeatherConfig) (command: Command) : Result<Command, CommandError> =
+        validateCount config.MaxForecastDays command.Count
+        |> Result.bind (fun _ -> validateStartDate command.StartDate)
+        |> Result.map (fun _ -> command)
     
     // ==================== BUSINESS LOGIC (Orchestration) ====================
     
@@ -76,19 +88,19 @@ module GenerateForecasts =
         // Get start date (use provided or current time)
         let startDate = 
             command.StartDate 
-            |> Option.defaultWith (fun () -> deps.TimeProvider.GetCurrentTime())
+            |> Option.defaultWith deps.GetCurrentTime
         
-        let generatedAt = deps.TimeProvider.GetCurrentTime()
+        let generatedAt = deps.GetCurrentTime()
         
         // Generate random temperatures (impure, injected)
         let temperatures = 
             [| for _ in 1 .. command.Count do
-                deps.RandomProvider.GetInt deps.Config.MinTemperature deps.Config.MaxTemperature |]
+                deps.GetRandomInt deps.Config.MinTemperature deps.Config.MaxTemperature |]
         
         // Generate random summary indices (impure, injected)
         let summaryIndices=
             [| for _ in 1 .. command.Count do
-                deps.RandomProvider.GetInt 0 deps.Config.Summaries.Length |]
+                deps.GetRandomInt 0 deps.Config.Summaries.Length |]
         
         // Call pure domain function
         let forecasts =
@@ -112,12 +124,6 @@ module GenerateForecasts =
         |> Result.map (execute deps)
     
     // ==================== HTTP LAYER ====================
-    
-    /// HTTP request body
-    type GenerateForecastsRequest = {
-        Count: int
-        StartDate: DateTime option
-    }
     
     /// Map domain errors to HTTP responses
     let private mapErrorToHttp (error: CommandError) (ctx: HttpContext) : Task =
@@ -158,8 +164,8 @@ module GenerateForecasts =
                 requestBody = RequestBody(typeof<GenerateForecastsRequest>),
                 responseBodies = [|
                     ResponseBody(typeof<CommandResult>, statusCode = 201)
-                    ResponseBody(typeof<Http.ErrorResponse>, statusCode = 400)
-                    ResponseBody(typeof<Http.ErrorResponse>, statusCode = 500)
+                    ResponseBody(typeof<ErrorResponse>, statusCode = 400)
+                    ResponseBody(typeof<ErrorResponse>, statusCode = 500)
                 |],
                 configureOperation = fun operation ->
                     operation.Summary <- "Generate weather forecasts"

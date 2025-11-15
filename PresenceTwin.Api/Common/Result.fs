@@ -1,6 +1,8 @@
-namespace PresenceTwin.Api.Common
+namespace PresenceTwin.Api.Common.Result
 
 module Result =
+
+    // ==================== RESULT FUNCTIONS ====================
     
     /// Map a function over the Ok value
     let map (f: 'T -> 'U) (result: Result<'T, 'E>) : Result<'U, 'E> =
@@ -27,6 +29,8 @@ module Result =
         | Error e, _ -> Error e
         | _, Error e -> Error e
     
+    // ==================== PREDICATES ====================
+    
     /// Check if Result is Ok
     let isOk (result: Result<'T, 'E>) : bool =
         match result with
@@ -36,6 +40,8 @@ module Result =
     /// Check if Result is Error
     let isError (result: Result<'T, 'E>) : bool =
         not (isOk result)
+    
+    // ==================== DEFAULT VALUE ====================
     
     /// Get the Ok value or a default
     let defaultValue (defaultVal: 'T) (result: Result<'T, 'E>) : 'T =
@@ -49,6 +55,8 @@ module Result =
         | Ok value -> value
         | Error error -> f error
     
+    // ==================== SEQUENCE ====================
+    
     /// Combine multiple Results into a single Result containing a list
     let sequence (results: Result<'T, 'E> list) : Result<'T list, 'E> =
         let folder (state: Result<'T list, 'E>) (result: Result<'T, 'E>) =
@@ -60,16 +68,20 @@ module Result =
         List.fold folder (Ok []) results
         |> map List.rev
     
+    // ==================== OPTION CONVERSION ====================
+    
     /// Lift a value into a Result
     let ofOption (error: 'E) (option: 'T option) : Result<'T, 'E> =
         match option with
         | Some value -> Ok value
         | None -> Error error
     
+    // ==================== COMPUTATION EXPRESSION ====================
+    
     /// Validation builder
     type ValidationBuilder() =
         member _.Return(x) = Ok x
         member _.Bind(x, f) = bind f x
         member _.ReturnFrom(x) = x
-        
+    
     let validation = ValidationBuilder()

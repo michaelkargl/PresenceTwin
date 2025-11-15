@@ -1,14 +1,11 @@
 namespace PresenceTwin.Api
 
-#nowarn "20"
-
+open Oxpecker
 open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
-open Oxpecker
-open Oxpecker.OpenApi
-open PresenceTwin.Api.Infrastructure
-open PresenceTwin.Api.Features.Weather
+open PresenceTwin.Api.Infrastructure.Configuration
+open PresenceTwin.Api.Features.Weather.Endpoints
 
 type ExitCode =
     | Success = 0
@@ -18,24 +15,16 @@ module Program =
 
     /// Configure application services (DI container)
     let private configureServices (services: IServiceCollection) : unit =
-        services
-            .AddRouting()
-            .AddAntiforgery()
-            .AddOxpecker()
-            .AddOpenApi()
-            .AddEndpointsApiExplorer()
-            .AddSwaggerGen()
+        services.AddRouting().AddAntiforgery().AddOxpecker().AddOpenApi().AddEndpointsApiExplorer().AddSwaggerGen()
         |> ignore
 
-    /// Configure application middleware pipeline
-    let private configureApp (config: Configuration.WeatherConfig) (app: WebApplication) : unit =
-        // Configure middleware
+    /// application middleware pipeline
+    let private configureApp (config: WeatherConfig) (app: WebApplication) : unit =
         if app.Environment.IsDevelopment() then
             app.UseDeveloperExceptionPage() |> ignore
         else
             app.UseExceptionHandler("/error") |> ignore
 
-        // Get all endpoints from features
         app.UseStaticFiles()
         |> _.UseAntiforgery()
         |> _.UseRouting()
@@ -49,16 +38,12 @@ module Program =
     [<EntryPoint>]
     let main args =
         let builder = WebApplication.CreateBuilder(args)
-
-        // Load configuration
         let weatherConfig = Configuration.loadWeatherConfig builder.Configuration
 
-        // Configure services
         configureServices builder.Services
 
         let app = builder.Build()
 
-        // Configure app with dependencies
         configureApp weatherConfig app
 
         app.Run()

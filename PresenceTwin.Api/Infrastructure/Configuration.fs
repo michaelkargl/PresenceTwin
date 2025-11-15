@@ -1,18 +1,15 @@
-namespace PresenceTwin.Api.Infrastructure
+namespace PresenceTwin.Api.Infrastructure.Configuration
 
 open Microsoft.Extensions.Configuration
 
-module Configuration =
-    
-    /// Weather feature configuration
-    type WeatherConfig = {
-        Summaries: string list
-        MinTemperature: int
-        MaxTemperature: int
-        MaxForecastDays: int
-    }
-    
-    /// Load weather configuration from IConfiguration
+type WeatherConfig = {
+    Summaries: string list
+    MinTemperature: int
+    MaxTemperature: int
+    MaxForecastDays: int
+}
+
+module Configuration =    
     let loadWeatherConfig (config: IConfiguration) : WeatherConfig =
         let summaries = 
             config.GetSection("Weather:Summaries").Get<string[]>()

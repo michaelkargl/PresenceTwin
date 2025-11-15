@@ -1,23 +1,29 @@
-namespace PresenceTwin.Api.Common
+namespace PresenceTwin.Api.Common.Http
 
 open System.Threading.Tasks
 open Microsoft.AspNetCore.Http
 open Oxpecker
 
+// ==================== TYPES ====================
+
+/// Standard error response
+type ErrorResponse = {
+    Error: string
+    Message: string
+    Details: obj option
+}
+
 module Http =
-    
-    /// Standard error response
-    type ErrorResponse = {
-        Error: string
-        Message: string
-        Details: obj option
-    }
+
+    // ==================== ERROR HELPERS ====================
     
     /// Create an error response
     let createError error message details =
         { Error = error
           Message = message
           Details = details }
+    
+    // ==================== SUCCESS RESPONSES ====================
     
     /// Write JSON response with 200 OK
     let writeJsonOk<'T> (data: 'T) (ctx: HttpContext) : Task =
@@ -28,7 +34,7 @@ module Http =
     let writeJsonCreated<'T> (data: 'T) (location: string option) (ctx: HttpContext) : Task =
         ctx.SetStatusCode(201)
         match location with
-        | Some loc -> ctx.Response.Headers.["Location"] <- loc
+        | Some loc -> ctx.Response.Headers["Location"] <- loc
         | None -> ()
         ctx.WriteJson(data)
     
@@ -36,6 +42,8 @@ module Http =
     let writeNoContent (ctx: HttpContext) : Task =
         ctx.SetStatusCode(204)
         Task.CompletedTask
+    
+    // ==================== ERROR RESPONSES ====================
     
     /// Write 400 Bad Request with error details
     let writeBadRequest (error: string) (message: string) (details: obj option) (ctx: HttpContext) : Task =
@@ -62,6 +70,8 @@ module Http =
         ctx.SetStatusCode(500)
         ctx.WriteJson(createError "InternalServerError" message None)
     
+    // ==================== RESULT MAPPING ====================
+    
     /// Map Result to HTTP response
     let writeResult<'T, 'E> 
         (successWriter: 'T -> HttpContext -> Task)
@@ -72,6 +82,8 @@ module Http =
         match result with
         | Ok value -> successWriter value ctx
         | Error error -> errorMapper error ctx
+    
+    // ==================== EXCEPTION HANDLING ====================
     
     /// Try-catch wrapper that returns 500 on exception
     let handleExceptions (handler: HttpContext -> Task) (ctx: HttpContext) : Task =
