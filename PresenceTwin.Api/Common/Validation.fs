@@ -1,20 +1,24 @@
-namespace PresenceTwin.Api.Common
+namespace PresenceTwin.Api.Common.Validation
 
 open System
 
+// ==================== VALIDATION ERROR TYPE ====================
+
+/// Validation error type
+type ValidationError = {
+    Field: string
+    Message: string
+}
+
 module Validation =
-    
-    /// Validation error type
-    type ValidationError = {
-        Field: string
-        Message: string
-    }
-    
+
     /// Create a validation error
     let error field message = {
         Field = field
         Message = message
     }
+    
+    // ==================== STRING VALIDATION ====================
     
     /// Validate that a value is not null or whitespace
     let notEmpty (field: string) (value: string) : Result<string, ValidationError> =
@@ -22,6 +26,17 @@ module Validation =
             Error (error field $"{field} cannot be empty")
         else
             Ok value
+    
+    /// Validate that a string has a maximum length
+    let maxLength (field: string) (max: int) (value: string) : Result<string, ValidationError> =
+        if String.IsNullOrEmpty(value) then
+            Ok value
+        elif value.Length > max then
+            Error (error field $"{field} cannot exceed {max} characters")
+        else
+            Ok value
+    
+    // ==================== NUMBER VALIDATION ====================
     
     /// Validate that a number is positive
     let positive (field: string) (value: int) : Result<int, ValidationError> =
@@ -44,14 +59,7 @@ module Validation =
         else
             Ok value
     
-    /// Validate that a string has a maximum length
-    let maxLength (field: string) (max: int) (value: string) : Result<string, ValidationError> =
-        if String.IsNullOrEmpty(value) then
-            Ok value
-        elif value.Length > max then
-            Error (error field $"{field} cannot exceed {max} characters")
-        else
-            Ok value
+    // ==================== DATE VALIDATION ====================
     
     /// Validate that a date is not in the past
     let notInPast (field: string) (date: DateTime) : Result<DateTime, ValidationError> =
@@ -66,6 +74,8 @@ module Validation =
             Error (error field $"{field} cannot be in the future")
         else
             Ok date
+    
+    // ==================== VALIDATION COMBINATORS ====================
     
     /// Combine multiple validation results
     let combine (results: Result<'T, ValidationError> list) : Result<'T list, ValidationError list> =

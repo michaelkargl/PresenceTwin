@@ -1,4 +1,4 @@
-namespace PresenceTwin.Api.Features.Weather
+namespace PresenceTwin.Api.Features.Weather.GetForecast
 
 open System
 open System.Threading.Tasks
@@ -6,39 +6,47 @@ open Microsoft.AspNetCore.Http
 open Oxpecker
 open Oxpecker.OpenApi
 open Microsoft.OpenApi.Models
-open PresenceTwin.Api.Common
-open PresenceTwin.Api.Infrastructure
+open PresenceTwin.Api.Common.Http
+open PresenceTwin.Api.Common.Result
+open PresenceTwin.Api.Infrastructure.Configuration
+open PresenceTwin.Api.Features.Weather.Domain
+
+// ==================== QUERY MODEL ====================
+
+/// Query input
+type Query = {
+    Count: int
+}
+
+/// Query result
+type QueryResult = WeatherForecast array
+
+/// Query errors
+type QueryError =
+    | InvalidCount of int * string
+    | ConfigurationError of string
+
+// ==================== DEPENDENCIES ====================
+
+/// Type aliases for dependency functions
+type GetCurrentTime = unit -> DateTime
+type GetRandomInt = int -> int -> int
+
+/// Dependencies needed by this query
+type Dependencies = {
+    Config: WeatherConfig
+    GetCurrentTime: GetCurrentTime
+    GetRandomInt: GetRandomInt
+}
+
+// ==================== MODULE ====================
 
 module GetForecast =
-    
-    // ==================== QUERY MODEL ====================
-    
-    /// Query input
-    type Query = {
-        Count: int
-    }
-    
-    /// Query result
-    type QueryResult = Domain.WeatherForecast array
-    
-    /// Query errors
-    type QueryError =
-        | InvalidCount of int * string
-        | ConfigurationError of string
-    
-    // ==================== DEPENDENCIES ====================
-    
-    /// Dependencies needed by this query
-    type Dependencies = {
-        Config: Configuration.WeatherConfig
-        TimeProvider: Dependencies.ITimeProvider
-        RandomProvider: Dependencies.IRandomProvider
-    }
-    
+
     // ==================== VALIDATION (Pure) ====================
     
     /// Validate the query
-    let private validate (config: Configuration.WeatherConfig) (query: Query) : Result<Query, QueryError> =
+    let private validate (config: WeatherConfig) (query: Query) : Result<Query, QueryError> =
         if query.Count < 1 then
             Error (InvalidCount (query.Count, "Count must be at least 1"))
         elif query.Count > config.MaxForecastDays then
@@ -51,17 +59,17 @@ module GetForecast =
     /// Execute the query (coordinates pure domain logic with impure I/O)
     let private execute (deps: Dependencies) (query: Query) : QueryResult =
         // Get current time (impure, injected)
-        let startDate = deps.TimeProvider.GetCurrentTime()
+        let startDate = deps.GetCurrentTime()
         
         // Generate random temperatures (impure, injected)
         let temperatures = 
             [| for _ in 1 .. query.Count do
-                deps.RandomProvider.GetInt deps.Config.MinTemperature deps.Config.MaxTemperature |]
+                deps.GetRandomInt deps.Config.MinTemperature deps.Config.MaxTemperature |]
         
         // Generate random summary indices (impure, injected)
         let summaryIndices =
             [| for _ in 1 .. query.Count do
-                deps.RandomProvider.GetInt 0 deps.Config.Summaries.Length |]
+                deps.GetRandomInt 0 deps.Config.Summaries.Length |]
         
         // Call pure domain function
         Domain.generateForecasts
@@ -105,9 +113,9 @@ module GetForecast =
         |> addOpenApi (
             OpenApiConfig(
                 responseBodies = [|
-                    ResponseBody(typeof<Domain.WeatherForecast[]>, statusCode = 200)
-                    ResponseBody(typeof<Http.ErrorResponse>, statusCode = 400)
-                    ResponseBody(typeof<Http.ErrorResponse>, statusCode = 500)
+                    ResponseBody(typeof<WeatherForecast[]>, statusCode = 200)
+                    ResponseBody(typeof<ErrorResponse>, statusCode = 400)
+                    ResponseBody(typeof<ErrorResponse>, statusCode = 500)
                 |],
                 configureOperation = fun operation ->
                     operation.Summary <- "Get weather forecasts"

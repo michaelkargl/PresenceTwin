@@ -1,25 +1,36 @@
-namespace PresenceTwin.Api.Features.Weather
+namespace PresenceTwin.Api.Features.Weather.Domain
 
 open System
 
+// ==================== DOMAIN TYPES ====================
+
+/// Weather forecast domain model (pure data, no behavior)
+type WeatherForecast = {
+    Date: DateTime
+    TemperatureC: int
+    Summary: string
+}
+
+// ==================== MODULE ====================
+
 module Domain =
+
+    // ==================== DOMAIN FUNCTIONS ====================
     
-    /// Weather forecast domain model
-    type WeatherForecast = {
-        Date: DateTime
-        TemperatureC: int
-        Summary: string
-    }
-    with
-        /// Computed property for Fahrenheit temperature
-        member this.TemperatureF =
-            32.0 + (float this.TemperatureC / 0.5556)
+    /// Module containing functions for WeatherForecast type
+    module WeatherForecast =
+        
+        /// Calculate Fahrenheit temperature from Celsius (pure function)
+        let temperatureF (forecast: WeatherForecast) : float =
+            32.0 + (float forecast.TemperatureC / 0.5556)
+        
+        /// Create a weather forecast (pure function)
+        let create (date: DateTime) (temperatureC: int) (summary: string) : WeatherForecast =
+            { Date = date
+              TemperatureC = temperatureC
+              Summary = summary }
     
-    /// Create a weather forecast (pure function)
-    let createForecast (date: DateTime) (temperatureC: int) (summary: string) : WeatherForecast =
-        { Date = date
-          TemperatureC = temperatureC
-          Summary = summary }
+    // ==================== BUSINESS LOGIC ====================
     
     /// Generate forecasts from provided inputs (pure function)
     /// All impure operations (random numbers, current time) are passed as parameters
@@ -32,7 +43,7 @@ module Domain =
         : WeatherForecast array =
         
         [| for i in 0 .. count - 1 do
-            createForecast
+            WeatherForecast.create
                 (startDate.AddDays(float (i + 1)))
-                temperatures.[i]
-                summaries.[summaryIndices.[i]] |]
+                temperatures[i]
+                summaries[summaryIndices[i]] |]

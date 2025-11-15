@@ -6,9 +6,8 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Oxpecker
-open Oxpecker.OpenApi
-open PresenceTwin.Api.Infrastructure
-open PresenceTwin.Api.Features.Weather
+open PresenceTwin.Api.Infrastructure.Configuration
+open PresenceTwin.Api.Features.Weather.Endpoints
 
 type ExitCode =
     | Success = 0
@@ -28,7 +27,7 @@ module Program =
         |> ignore
 
     /// Configure application middleware pipeline
-    let private configureApp (config: Configuration.WeatherConfig) (app: WebApplication) : unit =
+    let private configureApp (config: WeatherConfig) (app: WebApplication) : unit =
         // Configure middleware
         if app.Environment.IsDevelopment() then
             app.UseDeveloperExceptionPage() |> ignore

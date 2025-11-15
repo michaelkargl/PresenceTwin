@@ -1,16 +1,20 @@
-namespace PresenceTwin.Api.Infrastructure
+namespace PresenceTwin.Api.Infrastructure.Configuration
 
 open Microsoft.Extensions.Configuration
 
+// ==================== CONFIGURATION TYPES ====================
+
+/// Weather feature configuration
+type WeatherConfig = {
+    Summaries: string list
+    MinTemperature: int
+    MaxTemperature: int
+    MaxForecastDays: int
+}
+
 module Configuration =
-    
-    /// Weather feature configuration
-    type WeatherConfig = {
-        Summaries: string list
-        MinTemperature: int
-        MaxTemperature: int
-        MaxForecastDays: int
-    }
+
+    // ==================== CONFIGURATION LOADING ====================
     
     /// Load weather configuration from IConfiguration
     let loadWeatherConfig (config: IConfiguration) : WeatherConfig =
