@@ -9,6 +9,7 @@
         <!-- Common layer (no dependencies) -->
         <Compile Include="Common/Result.fs" />
         <Compile Include="Common/Validation.fs" />
+        <Compile Include="Common\Error.fs" />
         <Compile Include="Common/Http.fs" />
         
         <!-- Infrastructure layer (depends on Common) -->

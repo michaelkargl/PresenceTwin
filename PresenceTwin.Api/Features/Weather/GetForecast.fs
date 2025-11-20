@@ -102,7 +102,7 @@ module GetForecast =
         let query = { Count = count }
         
         handle deps query
-        |> Http.writeResult Http.writeJsonOk mapErrorToHttp
+        |> Http.writeResult Http.writeOk mapErrorToHttp
         <| ctx
     
     // ==================== OPENAPI SPECIFICATION ====================

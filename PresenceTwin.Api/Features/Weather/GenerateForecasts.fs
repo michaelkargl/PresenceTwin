@@ -149,7 +149,7 @@ module GenerateForecasts =
             return!
                 handle deps command
                 |> Http.writeResult 
-                    (fun result -> Http.writeJsonCreated result None)
+                    (fun result -> Http.writeCreated result None)
                     mapErrorToHttp
                 <| ctx
         }

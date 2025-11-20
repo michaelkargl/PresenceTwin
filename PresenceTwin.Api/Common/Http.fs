@@ -1,79 +1,40 @@
 namespace PresenceTwin.Api.Common.Http
 
+open Oxpecker
 open System.Threading.Tasks
 open Microsoft.AspNetCore.Http
-open Oxpecker
-
-// ==================== TYPES ====================
-
-/// Standard error response
-type ErrorResponse = {
-    Error: string
-    Message: string
-    Details: obj option
-}
+open PresenceTwin.Api.Common.Error.Http
 
 module Http =
-
-    // ==================== ERROR HELPERS ====================
-    
-    /// Create an error response
-    let createError error message details =
-        { Error = error
-          Message = message
-          Details = details }
-    
-    // ==================== SUCCESS RESPONSES ====================
-    
-    /// Write JSON response with 200 OK
-    let writeJsonOk<'T> (data: 'T) (ctx: HttpContext) : Task =
+    let writeOk<'T> (data: 'T) (ctx: HttpContext) : Task =
         ctx.SetStatusCode(200)
         ctx.WriteJson(data)
-    
-    /// Write JSON response with 201 Created
-    let writeJsonCreated<'T> (data: 'T) (location: string option) (ctx: HttpContext) : Task =
-        ctx.SetStatusCode(201)
-        match location with
-        | Some loc -> ctx.Response.Headers["Location"] <- loc
-        | None -> ()
-        ctx.WriteJson(data)
-    
-    /// Write 204 No Content
+
     let writeNoContent (ctx: HttpContext) : Task =
         ctx.SetStatusCode(204)
         Task.CompletedTask
-    
-    // ==================== ERROR RESPONSES ====================
-    
-    /// Write 400 Bad Request with error details
+
     let writeBadRequest (error: string) (message: string) (details: obj option) (ctx: HttpContext) : Task =
         ctx.SetStatusCode(400)
-        ctx.WriteJson(createError error message details)
-    
-    /// Write 404 Not Found
+        ctx.WriteJson(ErrorResponse.createError error message details)
+
     let writeNotFound (message: string) (ctx: HttpContext) : Task =
         ctx.SetStatusCode(404)
-        ctx.WriteJson(createError "NotFound" message None)
-    
-    /// Write 409 Conflict
+        ctx.WriteJson(ErrorResponse.createError "NotFound" message None)
+
     let writeConflict (message: string) (ctx: HttpContext) : Task =
         ctx.SetStatusCode(409)
-        ctx.WriteJson(createError "Conflict" message None)
-    
-    /// Write 422 Unprocessable Entity (validation errors)
+        ctx.WriteJson(ErrorResponse.createError "Conflict" message None)
+
     let writeValidationError (errors: obj) (ctx: HttpContext) : Task =
         ctx.SetStatusCode(422)
-        ctx.WriteJson(createError "ValidationError" "Validation failed" (Some errors))
-    
-    /// Write 500 Internal Server Error
+        ctx.WriteJson(ErrorResponse.createError "ValidationError" "Validation failed" (Some errors))
+
     let writeInternalServerError (message: string) (ctx: HttpContext) : Task =
         ctx.SetStatusCode(500)
-        ctx.WriteJson(createError "InternalServerError" message None)
-    
-    // ==================== RESULT MAPPING ====================
-    
-    /// Map Result to HTTP response
-    let writeResult<'T, 'E> 
+        ctx.WriteJson(ErrorResponse.createError "InternalServerError" message None)
+
+    let writeResult<'T, 'E>
         (successWriter: 'T -> HttpContext -> Task)
         (errorMapper: 'E -> HttpContext -> Task)
         (result: Result<'T, 'E>)
@@ -82,15 +43,12 @@ module Http =
         match result with
         | Ok value -> successWriter value ctx
         | Error error -> errorMapper error ctx
-    
-    // ==================== EXCEPTION HANDLING ====================
-    
-    /// Try-catch wrapper that returns 500 on exception
+
     let handleExceptions (handler: HttpContext -> Task) (ctx: HttpContext) : Task =
         task {
             try
                 return! handler ctx
             with ex ->
-                // In production, log the exception here
+                // TODO: In production, log the exception here
                 return! writeInternalServerError ex.Message ctx
         }
